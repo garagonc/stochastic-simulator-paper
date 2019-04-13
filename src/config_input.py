@@ -11,7 +11,7 @@ input={
     },
     "PROFEV": {
     	"Start_Time": 7,
-	"VAC_SoC_Value": 50,
+	"VAC_SoC_Value": 40,
         "CarPark": {
             "Cars": {
                 "Car1": {
@@ -39,18 +39,22 @@ input={
                 "Charger2": {
                     "Max_Charging_Power_kW": 7,
                     "Hosted_Car": "Car2",
-                    "SoC": 0.8
+                    "SoC": 0.4
                 },
                 "Charger3": {
-                    "Max_Charging_Power_kW": 7
+                    "Max_Charging_Power_kW": 7,
+                    "Hosted_Car": "Car3",
+                    "SoC": 0.4
                 },
                 "Charger4": {
                     "Max_Charging_Power_kW": 22,
                     "Hosted_Car": "Car4",
-                    "SoC": 0.2
+                    "SoC": 0.3
                 },
                 "Charger5": {
-                    "Max_Charging_Power_kW": 22
+                    "Max_Charging_Power_kW": 22,
+                    "Hosted_Car": "Car5",
+                    "SoC": 0.4
                 }
             }
         },
