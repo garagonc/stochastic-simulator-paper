@@ -17,6 +17,7 @@ class Inputs:
 
         # normal working
         payload =json.dumps(input_data, indent=4, sort_keys=True)
+        #payload=""
         #logger.debug("payload "+str(payload))
 
         headers = {
@@ -27,7 +28,7 @@ class Inputs:
         # if id was present PUT
         if id is not None:
             endpoint = "v1/inputs/dataset/" +str(id)
-            #logger.debug("endpoint "+str(endpoint))
+            logger.debug("endpoint "+str(endpoint))
             response =self.connection.send_request("PUT", endpoint, payload, headers)
             logger.debug(json.dumps(response, indent=4, sort_keys=True))
 
@@ -45,6 +46,7 @@ class Inputs:
                 "solver": "ipopt"
         }
         #logger.debug("payload "+str(payload))
+        payload=json.dumps(payload, indent=4, sort_keys=True)
 
         headers = {
             'Content-Type': "application/json",

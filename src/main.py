@@ -23,15 +23,16 @@ if __name__ == '__main__':
     """
 
     utils = Utils()
-    host="simplon.fit.fraunhofer.de"
-    port=8000
+    host="localhost"
+    port=8001
     #id="a2be69a7d65f"  #this is the one that works
-    id="ee350b341a3f"
-    path_results="results/logs"
-    path_scenarios="./scenarios/scenario1.xlsx"
-    path_output="./results/scenario1_output.csv"
+    id="92206fa729de"
+    #path_results="results/logs"
+    path_results="/home/vinoth/ofw/optimization-framework/logs"
+    path_scenarios="./src/scenarios/scenario1.xlsx"
+    path_output="./src/results/scenario1_output.csv"
     utils.del_file_if_existing(path_output)
-    path_input = "./results/scenario1_input.csv"
+    path_input = "./src/results/scenario1_input.csv"
     utils.del_file_if_existing(path_input)
     number_cars=5
 
@@ -47,25 +48,25 @@ if __name__ == '__main__':
 
     logger.debug("Starting the loop")
 
-    first_sleep=True
+
     first_timestep=True
 
     SoC_bat_next_timestep = SoC_bat_start
     Pev={}
 
-    for time in range(24):
+    for time_sim in range(24):
         logger.debug("##################################################################")
-        logger.debug("Time "+str(time))
+        logger.debug("Time "+str(time_sim))
         logger.debug("##################################################################")
         # set simulation time
-        input_file["PROFEV"]["Start_Time"] = time
+        input_file["PROFEV"]["Start_Time"] = time_sim
 
         #get the cars connected to the charging statons following the scenario
-        charging_stations = utils.get_Cars_in_Chargers_for_Timestep(path_scenarios, time)
+        charging_stations = utils.get_Cars_in_Chargers_for_Timestep(path_scenarios, time_sim)
         logger.debug("charging stations " + str(charging_stations))
         #calculates the SoC for this timestep
 
-        if time == 0:
+        if time_sim == 0:
             Car_SoC_dict=utils.get_Car_SoCs(input_file["PROFEV"]["CarPark"]["Charging_Station"])
             if not len(Car_SoC_dict) == number_cars:
                 #Cars that are not connected at the beginning receive a SoC value of 0.4
@@ -101,7 +102,8 @@ if __name__ == '__main__':
         inputs["ESS_SoC"] = SoC_bat
         inputs["Aggregated_SoC"]=SoC_aggregated
         inputs["Aggregated_SoC_appr"] = SoC_aggregated_approximated
-        utils.store_input_optimization(path_input, inputs, SoC_EV_next_timestep, Car_SoC_dict, time)
+        logger.debug("Storing inputs")
+        utils.store_input_optimization(path_input, inputs, SoC_EV_next_timestep, Car_SoC_dict, time_sim)
 
 
         logger.debug("New input file for the simulation " + str(input_file))
@@ -109,12 +111,19 @@ if __name__ == '__main__':
 
         #run simulation
         ofw.run_simulation(id)
+        status="running"
+        status = ofw.get_status(id)
+        logger.debug("status "+str(status))
+        first_sleep = True
+        while not ofw.get_status(id) == "stopped":
 
-        while ofw.get_status(id) is not "stopped":
+            logger.debug("waiting")
             if first_sleep:
-                time.sleep(720) #waits 12 min
+                first_sleep=False
+                time.sleep(720) #waits 14 min
             else:
                 time.sleep(30)
+            #status = ofw.get_status(id)
 
         #reads results for Pev from the optimization output
         Pev = utils.get_Pev_from_optimization(path_results)
@@ -138,10 +147,10 @@ if __name__ == '__main__':
 
         #saves results into a file
         outputs=utils.get_results_from_optimization(path_results)
-        utils.store_output_optimization(path_output, outputs, Pev, time)
+        utils.store_output_optimization(path_output, outputs, Pev, time_sim)
 
 
-        if time == 23:
+        if time_sim == 23:
             sys.exit(0)
 
 

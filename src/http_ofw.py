@@ -18,7 +18,7 @@ class Http_ofw:
     def __init__(self, host_info):
         logger.debug("host " + str(host_info["host"]))
         logger.debug("port " + str(host_info["port"]))
-        self.conn = http.HTTPConnection(str(host_info["host"]), "8000")
+        self.conn = http.HTTPConnection(str(host_info["host"]), str(host_info["port"]))
         logger.debug("connection "+str(self.conn))
         self.payload=""
         self.headers=""
@@ -34,6 +34,10 @@ class Http_ofw:
         self.endpoint= endpoint
 
         logger.debug("Sending request ")
+        logger.debug("request "+str(request))
+        logger.debug("endpoint " + str(endpoint))
+        logger.debug("payload " + str(payload))
+        logger.debug("headers " + str(headers))
         self.conn.request(self.request,self.endpoint, self.payload, self.header)
 
         res = self.conn.getresponse()

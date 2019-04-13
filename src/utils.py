@@ -44,10 +44,11 @@ class Utils:
 
     def get_latest_file(self, folder_path):
         folder_path = self.get_path(folder_path)
-        folder=folder_path+"\*"
+        folder=folder_path+"/*"
         #logger.debug("folder path " + str(folder))
         list_of_files = glob.glob(folder)  # * means all if need specific format then *.csv
-        latest_file = min(list_of_files, key=os.path.getctime)
+        latest_file = max(list_of_files, key=os.path.getctime)
+        logger.debug("latest file " + str(latest_file))
         return latest_file
 
     def read_data_from_xlsx(self, filepath):
@@ -62,7 +63,7 @@ class Utils:
         filepath = self.get_path(filepath)
         #logger.debug("filepath "+str(filepath))
         if not os.path.isfile(filepath):
-            logger.error(f"Error: Excel file at {filepath} is missing")
+            logger.error("Error: Excel file is missing")
             return
 
         # Read file
@@ -252,6 +253,8 @@ class Utils:
 
     def get_Cars_in_Chargers_for_Timestep(self, filepath, timestep):
         # Extract inputs sheet
+        filepath=self.get_path(filepath)
+        logger.debug("filepath "+str(filepath))
         excel_data= self.read_data_from_xlsx(filepath)
         #inputs = excel_data["Car2"]
         #logger.debug("excel inputs "+str(inputs))
@@ -273,9 +276,9 @@ class Utils:
 
     def read_csv_data(self, filepath):
         filepath = self.get_path(filepath)
-        # logger.debug("filepath "+str(filepath))
+        #logger.debug("filepath "+str(filepath))
         if not os.path.isfile(filepath):
-            logger.error(f"Error: Excel file at {filepath} is missing")
+            logger.debug("No CSV file present")
             return None
 
         # Read file
@@ -293,6 +296,7 @@ class Utils:
             print("Error while deleting file ", filepath)
 
     def store_input_optimization(self, filepath, data_to_store, soc_ev, soc_ev_approximated, time):
+
         data=self.read_csv_data(filepath)
         #logger.debug("data to store "+str(data_to_store))
         #logger.debug("data to store soc ev " + str(soc_ev))
@@ -305,16 +309,16 @@ class Utils:
         for i in range(1, 6):
             SoC_EV_appr["SoC_EV" + str(i) + "_appr"] = soc_ev_approximated[str(i)]
         data_to_pd = {**data_to_pd, **SoC_EV_appr}
-        logger.debug("data to pandas " + str(data_to_pd))
+        #logger.debug("data to pandas " + str(data_to_pd))
 
         if data is None:
             df = pd.DataFrame(data_to_pd, index=[time])
-            logger.debug(df["SoC_EV1"])
+            #logger.debug(df["SoC_EV1"])
             df.to_csv(filepath)
         else:
             df2 = pd.DataFrame(data_to_pd, index=[time])
             new_data = pd.concat([data, df2], ignore_index=False)
-            logger.debug(new_data["SoC_EV1"])
+            #logger.debug(new_data["SoC_EV1"])
             new_data.to_csv(filepath)
 
 
