@@ -125,8 +125,11 @@ if __name__ == '__main__':
                 time.sleep(30)
             #status = ofw.get_status(id)
 
+        outputs = utils.get_results_from_optimization(path_results)
+        logger.debug("after outputs")
+
         #reads results for Pev from the optimization output
-        Pev = utils.get_Pev_from_optimization(path_results)
+        Pev = utils.get_Pev_from_optimization(outputs)
         logger.debug("Pev "+str(Pev))
         logger.debug("Car_SoC_dict "+str(Car_SoC_dict))
 
@@ -136,7 +139,7 @@ if __name__ == '__main__':
         logger.debug("SoC EV next timestep approximated" + str(Car_SoC_dict))
 
         # calculate Pbat for next timestep
-        Pbat = utils.get_Pbat_from_optimization(path_results)
+        Pbat = utils.get_Pbat_from_optimization(outputs)
         logger.debug("Pbat " + str(Pbat))
 
         SoC_bat_next_timestep = utils.calculate_S0C_bat_next_timestep(SoC_bat_next_timestep, Pbat)
@@ -146,7 +149,7 @@ if __name__ == '__main__':
 
 
         #saves results into a file
-        outputs=utils.get_results_from_optimization(path_results)
+
         utils.store_output_optimization(path_output, outputs, Pev, time_sim)
 
 

@@ -1,6 +1,8 @@
 
 import logging, os, sys
 import glob
+import time
+
 import pandas as pd
 import json
 import math
@@ -14,6 +16,7 @@ logger = logging.getLogger(__file__)
 class Utils:
 
     def __init__(self):
+        self.previous_file=""
         self.charging_stations={
                 "Charger1": {
                     "Max_Charging_Power_kW": 7,
@@ -42,14 +45,43 @@ class Utils:
     def get_folder_path(self, path):
         return os.path.dirname(os.path.abspath(path))
 
+    def is_new_file(self, folder_path):
+        logger.debug("previous file "+str(self.previous_file))
+        folder_path = self.get_path(folder_path)
+        folder = folder_path + "/*"
+        # logger.debug("folder path " + str(folder))
+        list_of_files = glob.glob(folder)  # * means all if need specific format then *.csv
+        list_of_files_new = []
+        for file in list_of_files:
+            if "output" in file:
+                list_of_files_new.append(file)
+        logger.debug("len latest file "+str(len(list_of_files_new)))
+        if len(list_of_files_new) > 0:
+            latest_file = max(list_of_files_new, key=os.path.getctime)
+            logger.debug("latest file " + str(latest_file))
+            if latest_file == self.previous_file:
+                return False
+            else:
+                return True
+        else:
+            return False
+
     def get_latest_file(self, folder_path):
         folder_path = self.get_path(folder_path)
         folder=folder_path+"/*"
         #logger.debug("folder path " + str(folder))
         list_of_files = glob.glob(folder)  # * means all if need specific format then *.csv
-        latest_file = max(list_of_files, key=os.path.getctime)
-        logger.debug("latest file " + str(latest_file))
-        return latest_file
+        list_of_files_new=[]
+        for file in list_of_files:
+            if "output" in file:
+                list_of_files_new.append(file)
+        latest_file = max(list_of_files_new, key=os.path.getctime)
+        if latest_file == self.previous_file:
+            return None
+        else:
+            self.previous_file=latest_file
+            logger.debug("latest file " + str(latest_file))
+            return latest_file
 
     def read_data_from_xlsx(self, filepath):
         """Reads data from excel config file, parses it, and returns it as dict
@@ -113,6 +145,9 @@ class Utils:
 
         #sum(soc*capacity)/
     def get_results_from_optimization(self, folderpath):
+        while not self.is_new_file(folderpath):
+            time.sleep(2)
+
         filepath = self.get_latest_file(folderpath)
         # logger.debug("This is the latest file " + str(filepath))
 
@@ -127,40 +162,28 @@ class Utils:
             logger.error(e)
             sys.exit(0)
 
-    def get_Pev_from_optimization(self, folderpath):
-        filepath = self.get_latest_file(folderpath)
-        #logger.debug("This is the latest file " + str(filepath))
-
+    def get_Pev_from_optimization(self, data):
+        logger.debug("data for Pev "+str(data))
         try:
-            with open(filepath, "r") as myfile:
-                optimization_result = myfile.read()
-            #logger.debug("File: " + str(optimization_result)+" type "+str(type(optimization_result)))
-            P_data=json.loads(optimization_result)
             P_ev_return={}
-            for charging_stations, power in P_data["p_ev"].items():
+            for charging_stations, power in data["p_ev"].items():
                 P_ev_return[str(int(charging_stations)+1)]=power
             for i in range(1,6):
                 if not str(i) in P_ev_return.keys():
                     P_ev_return[str(i)]= -1
             return P_ev_return
         except Exception as e:
-            logger.debug("File path not existing")
+            logger.debug("Data not existing")
             logger.error(e)
             sys.exit(0)
 
-    def get_Pbat_from_optimization(self, folderpath):
-        filepath = self.get_latest_file(folderpath)
-        #logger.debug("This is the latest file " + str(filepath))
-
+    def get_Pbat_from_optimization(self, data):
+        logger.debug("data for Pbat " + str(data))
         try:
-            with open(filepath, "r") as myfile:
-                optimization_result = myfile.read()
-            #logger.debug("File: " + str(optimization_result)+" type "+str(type(optimization_result)))
-            P_data=json.loads(optimization_result)
-            P_bat_return=P_data["p_ess"]
+            P_bat_return=data["p_ess"]
             return P_bat_return
         except Exception as e:
-            logger.debug("File path not existing")
+            logger.debug("Data not existing")
             logger.error(e)
             sys.exit(0)
 
