@@ -43,7 +43,7 @@ class Inputs:
                 "dT_in_seconds":3600,
                 "model_name": "CarParkModel",
                 "repetition": 1,
-                "solver": "ipopt"
+                "solver": "cbc"
         }
         #logger.debug("payload "+str(payload))
         payload=json.dumps(payload, indent=4, sort_keys=True)

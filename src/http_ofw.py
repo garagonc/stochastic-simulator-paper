@@ -5,7 +5,7 @@
 import http.client as http
 import logging, os, json
 
-from src.config_input import input as input_file
+
 
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.DEBUG)
@@ -34,10 +34,10 @@ class Http_ofw:
         self.endpoint= endpoint
 
         logger.debug("Sending request ")
-        logger.debug("request "+str(request))
-        logger.debug("endpoint " + str(endpoint))
-        logger.debug("payload " + str(payload))
-        logger.debug("headers " + str(headers))
+        #logger.debug("request "+str(request))
+        #logger.debug("endpoint " + str(endpoint))
+        #logger.debug("payload " + str(payload))
+        #logger.debug("headers " + str(headers))
         self.conn.request(self.request,self.endpoint, self.payload, self.header)
 
         res = self.conn.getresponse()

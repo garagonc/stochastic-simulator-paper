@@ -97,6 +97,7 @@ ENV1/
 #idea workspace
 
 .idea
+.idea/
 .idea/workspace.xml
 
 fronius/

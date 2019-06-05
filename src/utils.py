@@ -7,8 +7,9 @@ import pandas as pd
 import json
 import math
 from pandas import ExcelWriter
+import xlsxwriter
 
-from src.config_input import input as input_file
+
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.DEBUG)
 logger = logging.getLogger(__file__)
@@ -187,26 +188,103 @@ class Utils:
             logger.error(e)
             sys.exit(0)
 
+    def get_possible_ESS_power(self,SoC_bat, SoC_to_reach):
+        Capacity = 70  # kWh
+        P_max = Capacity*abs(SoC_bat-SoC_to_reach)/1 #h
+        if P_max > 33:
+            P_max = 33
+        return P_max
+
+    def calculate_powers_first_ess(self, data, ess_soc):
+        id=data["id"]
+        p_pv= data["p_pv"]
+        p_grid = data["p_grid"]
+        p_ess = data["p_ess"]
+        p_vac = data["p_vac"]
+        p_feasible_ev_charging = data["feasible_ev_charging_power"]
+        p_ev = data["p_ev"]
+        exec_time=data["execution_time"]
+
+        logger.debug("p_grid "+str(p_grid)+" p_VAC "+str(p_vac)+" feas "+str(p_feasible_ev_charging)+" p_pv "+str(p_pv)+" p_ess "+str(p_ess))
+
+        #leftover_vac_charging_power = p_grid - p_ess - p_pv - p_feasible_ev_charging
+        leftover_vac_charging_power = p_vac - p_feasible_ev_charging
+        logger.debug("leftover vac "+str(leftover_vac_charging_power))
+
+
+        #if leftover then goes primarly to the ess
+        P_max_ess = self.get_possible_ESS_power(ess_soc, 1)
+        logger.debug("p_max ess " + str(P_max_ess))
+        possible_ess = p_ess - leftover_vac_charging_power
+        logger.debug("possible ess "+str(possible_ess))
+
+        #max because p_ess is negative for charging
+        p_ess_return= max(possible_ess,-1*P_max_ess)
+        logger.debug("p_ess_return " + str(p_ess_return))
+
+        # if lefover bigger than max ess power, rest goe to the grid
+        p_grid_return = p_feasible_ev_charging - p_pv - p_ess_return
+        logger.debug("p_grid_return " + str(p_grid_return))
+
+        data_to_return= {"id": id, "p_pv":p_pv, "p_grid":p_grid_return,"p_ess":p_ess_return,"p_vac":p_vac, "feasible_ev_charging_power": p_feasible_ev_charging,
+                         "p_ev":p_ev,"execution_time":exec_time}
+        return data_to_return
+
+    def calculate_powers_first_grid(self, data, ess_soc):
+        id=data["id"]
+        p_pv= data["p_pv"]
+        p_grid = data["p_grid"]
+        p_ess = data["p_ess"]
+        p_vac = data["p_vac"]
+        p_feasible_ev_charging = data["feasible_ev_charging_power"]
+        p_ev = data["p_ev"]
+        exec_time=data["execution_time"]
+
+        logger.debug("p_grid "+str(p_grid)+" p_VAC "+str(p_vac)+" feas "+str(p_feasible_ev_charging)+" p_pv "+str(p_pv)+" p_ess "+str(p_ess))
+
+
+        p_grid_return = p_feasible_ev_charging - p_pv - p_ess
+        logger.debug("p_grid_return " + str(p_grid_return))
+
+
+        data_to_return= {"id": id, "p_pv":p_pv, "p_grid_before":p_grid, "p_grid":p_grid_return,"p_ess":p_ess,"p_vac":p_vac, "feasible_ev_charging_power": p_feasible_ev_charging,
+                         "p_ev":p_ev,"execution_time":exec_time}
+        return data_to_return
+
     def calculate_S0C_bat_next_timestep(self, SoC_before, P_bat):
         #todo calculate the cars that are not there
-        Capacity = 2.43  # kWh
+        Capacity = 70  # kWh
+        dT=1 #hours
         SoC_now={}
+
         logger.debug("SoC before "+str(SoC_before))
         logger.debug("P_bat_result "+str(P_bat))
-        value=(SoC_before + (P_bat/Capacity))
+        value=(SoC_before - ((P_bat*dT)/Capacity)) # - because with positive Pbat it gives energy
 
         if value < 0:
             value=0
-        elif value > 100:
-            value=100
+        elif value > 1:
+            value=1
 
         SoC_now = value
         return SoC_now
 
+    def calculate_unit_consumption(self, number_km_per_hour):
+        number_cars=5
+        consumption_per_ev = (11.7 * number_km_per_hour) / 100  # 11.7 kwh/100km consumption for VW Eup
+        Capacity = 18.700  # kWh
+        VAC_Capacity= number_cars * Capacity
+        #consumption_per_ev = number_km_per_hour * consumption_for_x_km
+        unit_consumption= (consumption_per_ev * 100) / VAC_Capacity
+        return unit_consumption
+
+
+
+
     #def get_charger_connected(self, timestep):
-    def calculate_S0C_EV_next_timestep(self, SoC_before, P_ev):
-        number_km = 5
-        consumption_for_x_km=(11.7 * number_km) / 100 #11.7 kwh/100km consumption for VW Eup
+    def calculate_S0C_EV_next_timestep(self, SoC_before, P_ev, number_km_per_hour):
+        #number_km = 5
+        consumption_for_x_km=(11.7 * number_km_per_hour) / 100 #11.7 kwh/100km consumption for VW Eup
         #logger.debug("consumption for " +str(number_km)+" is "+str(consumption_for_x_km))
         #todo calculate the cars that are not there
         Capacity = 18.700  # kWh
@@ -224,30 +302,52 @@ class Utils:
                 else:
                     #logger.debug("car "+str(car)+" power "+str(power))
                     value=(SoC_before[car] + (P_ev[car]/Capacity))
-                    if value > 100:
-                        value = 100
+                    if value > 1:
+                        value = 1
                 SoC_now[car] = value
         return SoC_now
 
-    def get_SoC_approximation(self, dict_values):
+    def calculate_S0C_EV_for_sim(self, SoC_before, P_ev, connections, number_km_per_hour):
+        #number_km = 10
+        consumption_for_x_km=(11.7 * number_km_per_hour) / 100 #11.7 kwh/100km consumption for VW Eup
+        Capacity = 18.700  # kWh
+        SoC_now=[]
+        #logger.debug("SoC "+str(SoC_before))
+        #logger.debug("P_Ev "+str(P_ev))
+        if isinstance(P_ev, list) and isinstance(SoC_before,list):
+            #logger.debug("connections "+str(connections))
+            if connections:
+                power=P_ev[-1]
+                value = (SoC_before[-1] + (power / Capacity))
+                if value > 1:
+                    value = 1
+            else:
+                value = (SoC_before[-1] - (consumption_for_x_km / Capacity))
+                # logger.debug("value "+str(value))
+                if value < 0:
+                    value = 0
+            #SoC_before.append(value)
+
+        return value
+
+    def get_SoC_approximation(self, dict_values, step):
 
         if isinstance(dict_values, dict):
             SoC_dict = {}
             for number, SoC in dict_values.items():
                 #logger.debug("number "+str(number)+" SoC "+str(SoC))
-                frac, whole = math.modf(SoC)
-                #logger.debug("frac " + str(frac) + " whole " + str(whole))
-                if frac >= 0.5:
-                    SoC_dict[number] = math.ceil(SoC)
-                else:
-                    SoC_dict[number] = math.floor(SoC)
+                SoC_dict[number]=(round((SoC*100)/step)*step)/100
+                #frac, whole = math.modf(SoC)
+                #logger.debug("frac ev" + str(frac) + " whole " + str(whole))
+                #SoC_dict[number] = (round(SoC*100))/100
+
         else:
-            frac, whole = math.modf(dict_values)
-            # logger.debug("frac " + str(frac) + " whole " + str(whole))
-            if frac >= 0.5:
-                SoC_dict = math.ceil(dict_values)
-            else:
-                SoC_dict = math.floor(dict_values)
+            #approximation for bat in steps of 10
+            if dict_values > 1:
+                dict_values = 1
+            #frac, whole = math.modf(dict_values*10)
+            #logger.debug("frac " + str(frac) + " whole " + str(whole))
+            SoC_dict = round((dict_values*100)/step)*step
         return SoC_dict
 
     def set_SoC_in_EVs(self, charging_stations, SoC_dict):
@@ -263,39 +363,81 @@ class Utils:
         Car_SoC_dict={}
         for charger, value in charger_with_cars_dict.items():
             if len(value) == 3:
-                Car_SoC_dict[str(self.get_car_number(value["Hosted_Car"]))] = value["SoC"] * 100
+                Car_SoC_dict[str(self.get_car_number(value["Hosted_Car"]))] = value["SoC"]
         return Car_SoC_dict
         #logger.debug("Car_SoC_dict "+str(Car_SoC_dict))
 
     def complete_SoCs(self, Car_Soc_dict):
-        random_soc=40
+        random_soc=0.4
         for car_number in range(1,6) :
             if not str(car_number) in Car_Soc_dict.keys():
-                Car_Soc_dict[str(car_number)] = 40
+                Car_Soc_dict[str(car_number)] = random_soc
         return Car_Soc_dict
 
     def get_Cars_in_Chargers_for_Timestep(self, filepath, timestep):
+        charging_stations = {
+            "Charger1": {
+                "Max_Charging_Power_kW": 7,
+
+            },
+            "Charger2": {
+                "Max_Charging_Power_kW": 7,
+
+            },
+            "Charger3": {
+                "Max_Charging_Power_kW": 7
+            },
+            "Charger4": {
+                "Max_Charging_Power_kW": 22,
+
+            },
+            "Charger5": {
+                "Max_Charging_Power_kW": 22
+            }
+        }
         # Extract inputs sheet
         filepath=self.get_path(filepath)
         logger.debug("filepath "+str(filepath))
         excel_data= self.read_data_from_xlsx(filepath)
         #inputs = excel_data["Car2"]
         #logger.debug("excel inputs "+str(inputs))
-        #logger.debug("charging stations "+str(self.charging_stations))
-        for charger, value in self.charging_stations.items():
+        #logger.debug("charging stations "+str(charging_stations))
+        #charging_stations_return=charging_stations.copy()
+        charging_stations_return={}
+        for charger, value in charging_stations.items():
+            charging_stations_return[charger]=value
             charger_number=self.get_charger_number(charger)
+            #logger.debug("excel_data[Car1]"+str(excel_data["Car1"][timestep]))
             if excel_data["Car1"][timestep]==charger_number:
-                value["Hosted_Car"]="Car1"
+                charging_stations_return[charger]["Hosted_Car"]="Car1"
             elif excel_data["Car2"][timestep]==charger_number:
-                value["Hosted_Car"]="Car2"
+                charging_stations_return[charger]["Hosted_Car"]="Car2"
             elif excel_data["Car3"][timestep]==charger_number:
-                value["Hosted_Car"]="Car3"
+                charging_stations_return[charger]["Hosted_Car"]="Car3"
             elif excel_data["Car4"][timestep]==charger_number:
-                value["Hosted_Car"]="Car4"
+                charging_stations_return[charger]["Hosted_Car"]="Car4"
             elif excel_data["Car5"][timestep]==charger_number:
-                value["Hosted_Car"]="Car5"
-        return self.charging_stations
+                charging_stations_return[charger]["Hosted_Car"]="Car5"
+        #logger.debug("charging statins return "+str(charging_stations_return))
+        #logger.debug("self charging stations " + str(charging_stations))
+        return charging_stations_return
 
+    def is_ev_connected(self,filepath, timestep):
+        filepath = self.get_path(filepath)
+        logger.debug("filepath " + str(filepath))
+        excel_data = self.read_data_from_xlsx(filepath)
+        ev_connected_return = {}
+
+        for i in range(1,6):
+            if excel_data["Car"+str(i)][timestep] == i:
+                ev_connected_return["Car"+str(i)] = True
+            else:
+                ev_connected_return["Car"+str(i)] = False
+
+
+        # logger.debug("charging statins return "+str(charging_stations_return))
+        # logger.debug("self charging stations " + str(charging_stations))
+        return ev_connected_return
 
     def read_csv_data(self, filepath):
         filepath = self.get_path(filepath)
@@ -317,6 +459,50 @@ class Utils:
                 os.remove(filepath)
         except:
             print("Error while deleting file ", filepath)
+
+    def store_simulation(self, filepath, p_grid, p_pv,p_ess, p_vac, p_ev):
+        #logger.debug("data to store "+str(data_to_store))
+        #logger.debug("data to store soc ev " + str(soc_ev))
+        #logger.debug("data to store approximated" + str(soc_ev_approximated))
+        data_to_pd={}
+        data_to_pd["P_Grid"]=p_grid
+        data_to_pd["P_PV"]=p_pv
+        data_to_pd["P_ESS"] = p_ess
+        data_to_pd["P_VAC"]=p_vac
+        for i in range(1,6):
+            data_to_pd["P_EV"+str(i)]=p_ev[str(i)]
+            #logger.debug("len PEV"+str(i)+" "+str(len(data_to_pd["P_EV"+str(i)])))
+
+        logger.debug("data to pandas " + str(data_to_pd))
+
+        df = pd.DataFrame(data_to_pd)
+        # Create a Pandas Excel writer using XlsxWriter as the engine.
+        writer = pd.ExcelWriter(filepath, engine='xlsxwriter')
+        # Convert the dataframe to an XlsxWriter Excel object.
+        df.to_excel(writer, sheet_name='Sheet1')
+        # Close the Pandas Excel writer and output the Excel file.
+        writer.save()
+        #df.to_csv(filepath)
+
+    def store_simulation_soc(self, filepath,soc_bat,soc_ev):
+        logger.debug("data to store "+str(soc_bat))
+        logger.debug("data to store soc ev " + str(soc_ev))
+        #logger.debug("data to store approximated" + str(soc_ev_approximated))
+        data_to_pd={}
+        data_to_pd["SoC_ESS"]=soc_bat
+        for i in range(1,6):
+            data_to_pd["SoC_EV"+str(i)]=soc_ev[str(i)]
+            #logger.debug("len PEV"+str(i)+" "+str(len(data_to_pd["P_EV"+str(i)])))
+
+        logger.debug("data to pandas " + str(data_to_pd))
+
+        df = pd.DataFrame(data_to_pd)
+        # Create a Pandas Excel writer using XlsxWriter as the engine.
+        writer = pd.ExcelWriter(filepath, engine='xlsxwriter')
+        # Convert the dataframe to an XlsxWriter Excel object.
+        df.to_excel(writer, sheet_name='Sheet1')
+        # Close the Pandas Excel writer and output the Excel file.
+        writer.save()
 
     def store_input_optimization(self, filepath, data_to_store, soc_ev, soc_ev_approximated, time):
 
