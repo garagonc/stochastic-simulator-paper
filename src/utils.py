@@ -132,14 +132,17 @@ class Utils:
         else:
             return "No car with this name"
 
-    def get_SoC_aggregated(self, SoC_dict, Cars_dict):
-        SoC_list=[]
-        for car, soc in SoC_dict.items():
-            SoC_list.append(soc)
+    def get_SoC_aggregated(self, EV_object_dict):
 
-        Battery_Capacity_list=[]
-        for car, value in Cars_dict.items():
-            Battery_Capacity_list.append(value["Battery_Capacity_kWh"])
+        SoC_list = []
+        Battery_Capacity_list = []
+        for name, ev in EV_object_dict.items():
+            SoC_list.append(ev.get_SoC())
+            Battery_Capacity_list.append(ev.get_Battery_Capacity())
+
+        logger.debug("SoCs " + str(SoC_list))
+        logger.debug("Battery_Capacity " + str(Battery_Capacity_list))
+
         VAC=sum(Battery_Capacity_list)
         return sum([a * b for a, b in zip(SoC_list, Battery_Capacity_list)])/VAC
 
@@ -230,7 +233,7 @@ class Utils:
                          "p_ev":p_ev,"execution_time":exec_time}
         return data_to_return
 
-    def calculate_powers_first_grid(self, data, ess_soc):
+    def calculate_powers_first_grid(self, data):
         id=data["id"]
         p_pv= data["p_pv"]
         p_grid = data["p_grid"]
@@ -374,8 +377,8 @@ class Utils:
                 Car_Soc_dict[str(car_number)] = random_soc
         return Car_Soc_dict
 
-    def get_Cars_in_Chargers_for_Timestep(self, filepath, timestep):
-        charging_stations = {
+    def get_Cars_in_Chargers_for_Timestep(self, filepath, Chargers_dict, EVs_dict, timestep):
+        """charging_stations = {
             "Charger1": {
                 "Max_Charging_Power_kW": 7,
 
@@ -394,32 +397,36 @@ class Utils:
             "Charger5": {
                 "Max_Charging_Power_kW": 22
             }
-        }
+        }"""
         # Extract inputs sheet
         filepath=self.get_path(filepath)
         logger.debug("filepath "+str(filepath))
         excel_data= self.read_data_from_xlsx(filepath)
-        #inputs = excel_data["Car2"]
-        #logger.debug("excel inputs "+str(inputs))
-        #logger.debug("charging stations "+str(charging_stations))
-        #charging_stations_return=charging_stations.copy()
+
+        charging_stations={}
         charging_stations_return={}
-        for charger, value in charging_stations.items():
-            charging_stations_return[charger]=value
+        for charger, charger_object in Chargers_dict.items():
+            charging_stations_return[charger]={}
+            charging_stations_return[charger]["Max_Charging_Power_kW"]= charger_object.get_Max_Capacity()
+
             charger_number=self.get_charger_number(charger)
             #logger.debug("excel_data[Car1]"+str(excel_data["Car1"][timestep]))
             if excel_data["Car1"][timestep]==charger_number:
-                charging_stations_return[charger]["Hosted_Car"]="Car1"
+                charging_stations_return[charger]["Hosted_Car"]="ev1"
+                charging_stations_return[charger]["SoC"]=EVs_dict["ev1"].get_SoC()
             elif excel_data["Car2"][timestep]==charger_number:
-                charging_stations_return[charger]["Hosted_Car"]="Car2"
+                charging_stations_return[charger]["Hosted_Car"]="ev2"
+                charging_stations_return[charger]["SoC"] = EVs_dict["ev2"].get_SoC()
             elif excel_data["Car3"][timestep]==charger_number:
-                charging_stations_return[charger]["Hosted_Car"]="Car3"
+                charging_stations_return[charger]["Hosted_Car"]="ev3"
+                charging_stations_return[charger]["SoC"] = EVs_dict["ev3"].get_SoC()
             elif excel_data["Car4"][timestep]==charger_number:
-                charging_stations_return[charger]["Hosted_Car"]="Car4"
+                charging_stations_return[charger]["Hosted_Car"]="ev4"
+                charging_stations_return[charger]["SoC"] = EVs_dict["ev4"].get_SoC()
             elif excel_data["Car5"][timestep]==charger_number:
-                charging_stations_return[charger]["Hosted_Car"]="Car5"
-        #logger.debug("charging statins return "+str(charging_stations_return))
-        #logger.debug("self charging stations " + str(charging_stations))
+                charging_stations_return[charger]["Hosted_Car"]="ev5"
+                charging_stations_return[charger]["SoC"] = EVs_dict["ev5"].get_SoC()
+
         return charging_stations_return
 
     def is_ev_connected(self,filepath, timestep):
@@ -504,20 +511,11 @@ class Utils:
         # Close the Pandas Excel writer and output the Excel file.
         writer.save()
 
-    def store_input_optimization(self, filepath, data_to_store, soc_ev, soc_ev_approximated, time):
+    def store_input_optimization(self, filepath, data_to_store,  time):
 
         data=self.read_csv_data(filepath)
-        #logger.debug("data to store "+str(data_to_store))
-        #logger.debug("data to store soc ev " + str(soc_ev))
-        #logger.debug("data to store approximated" + str(soc_ev_approximated))
-        SoC_EV = {}
-        for i in range(1, 6):
-            SoC_EV["SoC_EV" + str(i)] = soc_ev[str(i)]
-        data_to_pd = {**data_to_store, **SoC_EV}
-        SoC_EV_appr = {}
-        for i in range(1, 6):
-            SoC_EV_appr["SoC_EV" + str(i) + "_appr"] = soc_ev_approximated[str(i)]
-        data_to_pd = {**data_to_pd, **SoC_EV_appr}
+
+        data_to_pd = data_to_store
         #logger.debug("data to pandas " + str(data_to_pd))
 
         if data is None:

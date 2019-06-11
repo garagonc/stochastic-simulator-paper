@@ -4,17 +4,16 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', le
 logger = logging.getLogger(__file__)
 
 
-class PV:
+class Load:
 
-    def __init__(self, Max_Power):
-        self.Max_Power = Max_Power
-        self.PV_forecast = [i * (Max_Power / 50.0) for i in self.PV]
-        logger.debug("PV created")
+    def __init__(self):
+
+        logger.debug("Load created")
 
     def get_forecast(self, init_time):
-        return self.PV_forecast[init_time:init_time+24]
+        return self.load[init_time:init_time+24]
 
-    PV = [
+    load = [
         0,
         0,
         0,

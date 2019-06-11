@@ -15,7 +15,7 @@ class ESS:
 
 
     def get_SoC(self):
-        return self.Soc
+        return self.SoC
 
     def set_SoC(self, value):
         self.SoC = value

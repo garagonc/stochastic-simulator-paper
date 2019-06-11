@@ -10,10 +10,17 @@ class EV:
         self.consumption = consumption_pro_100_km
         self.Soc = SoC
         self.ev_number = ev_number
-        logger.debug("EV "+self.ev_number+" created")
+        logger.debug("EV "+str(self.ev_number)+" created")
 
     def get_SoC(self):
         return self.Soc
+
+    def set_SoC(self, value):
+        if value < 0 or value >1:
+            return 0
+        else:
+            self.Soc = value
+            return 1
 
     def get_Battery_Capacity(self):
         return self.Battery_Capacity

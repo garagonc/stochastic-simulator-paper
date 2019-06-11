@@ -14,6 +14,7 @@ from src.photovoltaic import PV
 from src.EV import EV
 from src.local_battery import ESS
 from src.EV import Charger
+from src.load import Load
 from src.utils import Utils
 import logging, os, time
 
@@ -41,14 +42,34 @@ if __name__ == '__main__':
     local_ESS = ESS(ESS_capacity, ESS_SoC_Start, Max_Charging_Power, Max_Discharging_Power)
 
     # creating PV system
-    PV_90 = PV(90)
-    logger.debug("Time 1 "+str(PV_90.get_forecast(1)))
-    logger.debug(str(len(PV_90.get_forecast(1))))
-    PV_50 = PV(50)
+    PVs={}
+    PVs["PV_90"] = PV(90)
+    PVs["PV_50"] = PV(50)
 
-    sys.exit(0)
+    #creating Load object
+    Load_1= Load()
+
+    #creatiing Evs
+    EV_Battery_Capacity = 18.7# kWh
+    consumption_pro_100_km =  11.7 / 100
+    EVs={}
+    EVs["ev1"] = EV(1, EV_Battery_Capacity, 0.2, consumption_pro_100_km)
+    EVs["ev2"] = EV(2, EV_Battery_Capacity, 0.2, consumption_pro_100_km)
+    EVs["ev3"] = EV(3, EV_Battery_Capacity, 0.2, consumption_pro_100_km)
+    EVs["ev4"] = EV(4, EV_Battery_Capacity, 0.2, consumption_pro_100_km)
+    EVs["ev5"] = EV(5, EV_Battery_Capacity, 0.2, consumption_pro_100_km)
+
+    #creating chargers
+    Chargers={}
+    Chargers["Charger1"] = Charger(7)
+    Chargers["Charger2"] = Charger(7)
+    Chargers["Charger3"] = Charger(7)
+    Chargers["Charger4"] = Charger(22)
+    Chargers["Charger5"] = Charger(22)
+
+
     #scenarios_list=["scenario1","scenario2", "scenario3", "scenario4", "scenario5", "scenario6", "scenario7", "scenario8", "scenario9", "scenario10", "scenario11", "scenario12", "scenario13"]
-    scenarios_list = ["scenario4","scenario13","scenario8", "scenario9", "scenario10", "scenario11", "scenario12"]
+    scenarios_list = ["scenario2"]
 
 
 
@@ -58,32 +79,35 @@ if __name__ == '__main__':
         logger.debug("###################################")
         #from src.config_input import input as input_file
 
-        with open("/home/garagon/stochastic/src/config_input.py", "r") as in_file:
+        config_path = "H:/Doktorarbeit/UCC/Linksmart/stochastic-simulator-paper/src/config_input.py"
+        with open(config_path, "r") as in_file:
             input_file=json.loads(in_file.read())
         logger.debug("input_file "+str(input_file))
 
-        #path_results = "results/logs"
-        path_results="/home/vinoth/ofw/optimization-framework/logs"
-        path_scenarios = "/home/garagon/stochastic/src/scenarios/"+str(scenario)+".xlsx"
+        path_results = "results/logs"
+        #path_results="/home/vinoth/ofw/optimization-framework/logs"
+        #path_scenarios = "/home/garagon/stochastic/src/scenarios/"+str(scenario)+".xlsx"
+        path_scenarios = "scenarios/" + str(scenario) + ".xlsx"
         logger.debug("path scenarios "+str(path_scenarios))
-        # path_output="./src/results/scenario1_output.csv"
-        path_output = "/home/garagon/stochastic/src/results/output_"+str(scenario)+".csv"
+        path_output="results/output_"+str(scenario)+".csv"
+        #path_output = "/home/garagon/stochastic/src/results/output_"+str(scenario)+".csv"
         logger.debug("path output " + str(path_output))
         utils.del_file_if_existing(path_output)
-        path_input = "/home/garagon/stochastic/src/results/input_"+str(scenario)+".csv"
+        #path_input = "/home/garagon/stochastic/src/results/input_"+str(scenario)+".csv"
+        path_input = "results/input_" + str(scenario) + ".csv"
         logger.debug("path input " + str(path_input))
         utils.del_file_if_existing(path_input)
-        number_cars = 5
+
 
 
         #SoC_EV_start={"1":20,"2":20,"3":20,"4":20,"5":20}
-        SoC_EV_start = input_file["PROFEV"]["VAC_SoC_Value"]
-        SoC_bat_start = input_file["ESS"]["SoC_Value"]
+        #SoC_EV_start = input_file["PROFEV"]["VAC_SoC_Value"]
+        #SoC_bat_start = input_file["ESS"]["SoC_Value"]
 
         unit_consumption = utils.calculate_unit_consumption(number_km)
         logger.debug("unit_consumption "+str(unit_consumption))
         #input_file["PROFEV"]["Unit_Consumption_Assumption"]=unit_consumption
-        logger.debug("input_file " + str(input_file))
+
 
         command_to_execute = {"host":host,"port":port}
         http = Http_ofw(command_to_execute)
@@ -92,7 +116,7 @@ if __name__ == '__main__':
 
         logger.debug("Starting the loop")
 
-        SoC_bat_next_timestep = SoC_bat_start
+        #SoC_bat_next_timestep = SoC_bat_start
         Pev={}
 
 
@@ -101,84 +125,77 @@ if __name__ == '__main__':
             logger.debug("##################################################################")
             logger.debug("Time "+str(time_sim))
             logger.debug("##################################################################")
-            # set simulation time
-            input_file["PROFEV"]["Start_Time"] = time_sim
+
+            #time_sim = 7
+
+            #EV_SoC_aggregated =  utils.get_SoC_aggregated(EVs)
+            #logger.debug("EV_SoC_aggregated " + str(EV_SoC_aggregated))
+
+            #get the SoC of the local ESS
+            local_ESS_SoC = local_ESS.get_SoC()
+            logger.debug("Local_ESS_Soc " + str(local_ESS_SoC))
+            # changing input_file for PROFEV
+            input_file["ESS"]["SoC_Value"] = local_ESS_SoC
+
+
+            PV_forecast={}
+            #get the PV forcast starting from this timestep
+            for name, pv in PVs.items():
+                PV_forecast[name]=pv.get_forecast(time_sim)
+            logger.debug(str(PV_forecast))
+            input_file["photovoltaic"]["P_PV"] = PV_forecast["PV_50"]
+
+            #get the Load forecast starting from this timestep
+            Load_forecast = Load_1.get_forecast(time_sim)
+            logger.debug(str(Load_forecast))
+            input_file["load"]["P_Load"] = Load_forecast
 
             #get the cars connected to the charging statons following the scenario
-            charging_stations = utils.get_Cars_in_Chargers_for_Timestep(path_scenarios, time_sim)
+            charging_stations = utils.get_Cars_in_Chargers_for_Timestep(path_scenarios, Chargers, EVs, time_sim)
             logger.debug("charging stations " + str(charging_stations))
-            #calculates the SoC for this timestep
 
-            if time_sim == 0:
-                Car_SoC_dict=utils.get_Car_SoCs(input_file["PROFEV"]["CarPark"]["Charging_Station"])
-                if not len(Car_SoC_dict) == number_cars:
-                    #Cars that are not connected at the beginning receive a SoC value of 0.4
-                    Car_SoC_dict =  utils.complete_SoCs(Car_SoC_dict)
-                SoC_EV_next_timestep=Car_SoC_dict
-                logger.debug("Car_SoC_dict " + str(Car_SoC_dict))
+            input_file["Chargers"] = charging_stations
 
-                Cars_Capacity = input_file["PROFEV"]["CarPark"]["Cars"]
-                #*100 because soc aggregatted is between 0 and 1
-                SoC_aggregated = (utils.get_SoC_aggregated(Car_SoC_dict, Cars_Capacity))*100
-                logger.debug("Aggregated SoC " + str(SoC_aggregated) + "%")
-                SoC_aggregated_approximated = utils.get_SoC_approximation(SoC_aggregated/100, 2.5)
-                logger.debug("Aggregated SoC approximated " + str(SoC_aggregated_approximated) +"%")
-                is_EV_Connected = utils.is_ev_connected(path_scenarios,time_sim)
-                logger.debug("is_EV_connected "+str(is_EV_Connected))
-                input_file["PROFEV"]["VAC_SoC_Value"] = SoC_aggregated_approximated
-
-                SoC_bat = SoC_bat_start
-                logger.debug("SoC bat " + str(SoC_bat)+"%")
-                input_file["ESS"]["SoC_Value"] = SoC_bat
-            else:
-                charging_stations = utils.set_SoC_in_EVs(charging_stations, Car_SoC_dict)
-                logger.debug("New charging stations "+str(charging_stations))
-                input_file["PROFEV"]["CarPark"]["Charging_Station"] = charging_stations
-
-                #is it possible to send any aggregated soc?
-                Cars_Capacity=input_file["PROFEV"]["CarPark"]["Cars"]
-                logger.debug("SoC next timestep "+str(SoC_EV_next_timestep))
-                SoC_aggregated = utils.get_SoC_aggregated(SoC_EV_next_timestep, Cars_Capacity)
-                logger.debug("VAC SoC aggregated "+str(SoC_aggregated))
-                SoC_aggregated_approximated = utils.get_SoC_approximation(SoC_aggregated, 2.5)
-                logger.debug("VAC SoC aggregated aproximated " + str(SoC_aggregated_approximated))
-                is_EV_Connected = utils.is_ev_connected(path_scenarios, time_sim)
-                logger.debug("is_EV_connected " + str(is_EV_Connected))
-                input_file["PROFEV"]["VAC_SoC_Value"] = SoC_aggregated_approximated
-
-                logger.debug("SoC bat " + str(SoC_bat) + "%")
-                input_file["ESS"]["SoC_Value"] = SoC_bat
 
             inputs = {}
-            inputs["ESS_SoC"] = SoC_bat_next_timestep
-            inputs["ESS_SoC_appr"] = SoC_bat
-            inputs["VAC_SoC"]=SoC_aggregated
-            inputs["VAC_SoC_appr"] = SoC_aggregated_approximated
+            inputs["ESS_SoC"] = local_ESS_SoC
+            inputs["VAC_SoC"] = EV_SoC_aggregated
+            for name, ev in EVs.items():
+                inputs[name]=ev.get_SoC()
+            logger.debug("Inputs to file: "+str(inputs))
             logger.debug("Storing inputs")
-            utils.store_input_optimization(path_input, inputs, SoC_EV_next_timestep, Car_SoC_dict, time_sim)
+            utils.store_input_optimization(path_input, inputs, time_sim)
 
 
-            #logger.debug("New input file for the simulation " + str(json.dumps(input_file, indent=4, sort_keys=True)))
+            logger.debug("Input_file "+str(json.dumps(input_file, indent=4, sort_keys=True)))
+
+            # logger.debug("New input file for the simulation " + str(json.dumps(input_file, indent=4, sort_keys=True)))
             ofw.register_input(input_file, id)
-    
-            #run simulation
+
+            # run simulation
             ofw.run_simulation(id)
-            status="running"
+            status = "running"
             status = ofw.get_status(id)
-            logger.debug("status "+str(status))
+            logger.debug("status " + str(status))
             first_sleep = True
             while not ofw.get_status(id) == "stopped":
-    
-                logger.debug("waiting time "+str(time_sim)+" for scenario " + str(scenario))
+
+                logger.debug("waiting time " + str(time_sim) + " for scenario " + str(scenario))
                 if first_sleep:
-                    first_sleep=False
-                    time.sleep(720) #waits 14 min
+                    first_sleep = False
+                    time.sleep(720)  # waits 14 min
                 else:
                     time.sleep(30)
-                #status = ofw.get_status(id)
+                # status = ofw.get_status(id)
+                
+            outputs_stochastic = ofw.get_outputs(id)
+            logger.debug("Outputs "+str(outputs_stochastic))
 
-            outputs_stochastic = utils.get_results_from_optimization(path_results)
-            outputs=utils.calculate_powers_first_grid(outputs_stochastic, SoC_bat_next_timestep)
+
+            sys.exit(0)
+
+
+            outputs=utils.calculate_powers_first_grid(outputs_stochastic)
             logger.debug("after outputs "+str(outputs))
 
             #reads results for Pev from the optimization output [kW]

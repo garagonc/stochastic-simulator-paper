@@ -32,6 +32,29 @@ class Inputs:
             response =self.connection.send_request("PUT", endpoint, payload, headers)
             logger.debug(json.dumps(response, indent=4, sort_keys=True))
 
+    def get_outputs(self, id=None):
+        logger.debug("Getting outputs")
+        logger.debug("id " + str(id))
+
+        # normal working
+        payload = ""
+
+
+        headers = {
+            'Content-Type': "application/json",
+            'cache-control': "no-cache"
+        }
+
+        # if id was present PUT
+        if id is not None:
+            endpoint = "v1/outputs/dataset/" + str(id)
+            logger.debug("endpoint " + str(endpoint))
+            response = self.connection.send_request("GET", endpoint, payload, headers)
+            if response:
+                return response
+            else:
+                return "id not present"
+
     def run_simulation(self,  id=None):
         logger.debug("Starting simulation")
         logger.debug("id "+str(id))
