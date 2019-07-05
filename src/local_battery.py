@@ -29,15 +29,14 @@ class ESS:
     def get_max_discharging_power(self):
         return self.max_discharging_power
 
-    def calculate_S0C_next_timestep(self, SoC_before, P_bat, timestep_in_sec):
-        logger.debug("SoC before " + str(SoC_before))
-        logger.debug("P_bat_result " + str(P_bat))
-        value = (SoC_before + ((P_bat * timestep_in_sec)/ (self.Battery_Capacity * 3600)))
+    def calculate_S0C_next_timestep(self, P_bat, timestep_in_sec):
+
+        value = (self.get_SoC() + ((P_bat * timestep_in_sec)/ (self.Battery_Capacity * 3600)))
 
         if value < 0:
             value = 0
-        elif value > 100:
-            value = 100
+        elif value > 1:
+            value = 1
 
         SoC_now = value
         return SoC_now

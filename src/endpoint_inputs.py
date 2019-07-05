@@ -47,7 +47,7 @@ class Inputs:
 
         # if id was present PUT
         if id is not None:
-            endpoint = "v1/outputs/dataset/" + str(id)
+            endpoint = "v1/outputs/" + str(id)
             logger.debug("endpoint " + str(endpoint))
             response = self.connection.send_request("GET", endpoint, payload, headers)
             if response:
@@ -66,6 +66,7 @@ class Inputs:
                 "dT_in_seconds":3600,
                 "model_name": "CarParkModel",
                 "repetition": 1,
+                "optimization_type":"stochastic",
                 "solver": "cbc"
         }
         #logger.debug("payload "+str(payload))
@@ -101,7 +102,7 @@ class Inputs:
         if id is not None:
             endpoint = "v1/optimization/status"
             #logger.debug("endpoint " + str(endpoint))
-            response = self.connection.send_request("GET", endpoint, payload, headers)
+            response = self.connection.send_request_status("GET", endpoint, payload, headers)
             #logger.debug(json.dumps(response, indent=4, sort_keys=True))
             if response:
                 for ids in response["status"].keys():

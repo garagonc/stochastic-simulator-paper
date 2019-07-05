@@ -37,19 +37,22 @@ class EV:
             value = (self.Soc - (consumption_for_x_km / self.Battery_Capacity))
             # logger.debug("value "+str(value))
             if value < 0:
-                value = 0
+                return 0
+            else:
+                return value
         else:
-            # logger.debug("car "+str(car)+" power "+str(power))
             value = (self.Soc + (P_ev / self.Battery_Capacity))
-            if value > 100:
-                value = 100
-        SoC_now = value
-        return SoC_now
+            if value > 1:
+                return 1
+            else:
+                return value
+
 
 
 class Charger:
-    def __init__(self, Max_Capacity):
+    def __init__(self, Max_Capacity, EV_connected):
         self.Max_Capacity = Max_Capacity
+        self.EV_connected = EV_connected
 
     def set_EV_connected(self, EV_connected):
         self.EV_connected = EV_connected

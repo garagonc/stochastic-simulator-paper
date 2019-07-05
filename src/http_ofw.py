@@ -25,6 +25,22 @@ class Http_ofw:
         self.request=""
         self.endpoint=""
 
+    def send_request_status(self, request, endpoint, payload, headers):
+        self.payload=payload
+        self.header=headers
+        self.request=request
+        self.endpoint= endpoint
+
+        logger.debug("Sending request ")
+
+        self.conn.request(self.request,self.endpoint, self.payload, self.header)
+
+        res = self.conn.getresponse()
+        data = res.read()
+
+        data=data.decode("utf-8")
+        data = json.loads(data)
+        return data
 
 
     def send_request(self, request, endpoint, payload, headers):
@@ -34,14 +50,12 @@ class Http_ofw:
         self.endpoint= endpoint
 
         logger.debug("Sending request ")
-        #logger.debug("request "+str(request))
-        #logger.debug("endpoint " + str(endpoint))
-        #logger.debug("payload " + str(payload))
-        #logger.debug("headers " + str(headers))
+
         self.conn.request(self.request,self.endpoint, self.payload, self.header)
 
         res = self.conn.getresponse()
         data = res.read()
+        #logger.debug("type of data "+str(type(data)))
         data=ast.literal_eval(data.decode("utf-8"))
         return data
 
