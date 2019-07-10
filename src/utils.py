@@ -169,11 +169,10 @@ class Utils:
     def set_SoC_with_Pev(self, data_input, Chargers_dict, EVs_dict, number_km):
         evs_connected = []
         for name, charger in Chargers_dict.items():
-            key = name
-            data = data_input[key]
             ev_name = charger.get_EV_connected()
             evs_connected.append(ev_name)
             if not ev_name == None:
+                data = data_input[name]
                 next_Soc = EVs_dict[ev_name].calculate_S0C_next_timestep(data, number_km)
                 EVs_dict[ev_name].set_SoC(next_Soc)
 
@@ -237,6 +236,24 @@ class Utils:
         data_to_return= {"id": id, "p_pv":p_pv, "p_grid":p_grid_return,"p_ess":p_ess_return,"p_vac":p_vac, "feasible_ev_charging_power": p_feasible_ev_charging,
                          "p_ev":p_ev,"execution_time":exec_time}
         return data_to_return
+
+    def create_output_message(self, data):
+        outputs={}
+        for key, value in data.items():
+            if "p_ev" in key:
+                new_key = key.split("/")
+                new_key = new_key[-3]
+            else:
+                new_key = key
+            for timestamp, value2 in value.items():
+                outputs[new_key] = value2
+
+        for i in range(1, 6):
+            key = "charger" + str(i)
+            if not key in outputs.keys():
+                outputs["charger" + str(i)] = 0
+
+        return outputs
 
     def calculate_powers_first_grid(self, data):
         id=data["id"]

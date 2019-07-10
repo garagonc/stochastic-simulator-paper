@@ -123,6 +123,7 @@ if __name__ == '__main__':
 
 
         for time_sim in range(24):
+            #time_sim = 8
             logger.debug("##################################################################")
             logger.debug("Time "+str(time_sim))
             logger.debug("##################################################################")
@@ -177,16 +178,14 @@ if __name__ == '__main__':
             # run simulation
             ofw.run_simulation(id)
             status = "running"
-            #status = ofw.get_status(id)
             logger.debug("status " + str(status))
 
             logger.debug("waiting time " + str(time_sim) + " for scenario " + str(scenario))
-            time.sleep(900)  # waits 14 min
+            time_to_sleep= 14*60
+            time.sleep(time_to_sleep)
             while not ofw.get_status(id) == "stopped":
-
                 logger.debug("waiting time " + str(time_sim) + " for scenario " + str(scenario))
                 time.sleep(30)
-                # status = ofw.get_status(id)
                 
             outputs_stochastic = ofw.get_outputs(id)
             logger.debug("Outputs "+str(outputs_stochastic))
@@ -194,8 +193,8 @@ if __name__ == '__main__':
 
 
 
-            """
-            outputs_stochastic= {'chargers/charger1/ev1/p_ev': {'1562148133.0': 0.0}, 'chargers/charger2/ev2/p_ev': {'1562148133.0': 0.0}, 'chargers/charger3/ev3/p_ev': {'1562148133.0': 0.0}, 'chargers/charger4/ev4/p_ev': {'1562148133.0': 0.0}, 'chargers/charger5/ev5/p_ev': {'1562148133.0': 0.0}, 'feasible_ev_charging_power': {'1562148133.0': 0.0}, 'p_ess': {'1562148133.0': 28.0}, 'p_grid': {'1562148133.0': -28.0}, 'p_pv': {'1562148133.0': 0.0}, 'p_vac': {'1562148133.0': 0.0}}
+
+            """outputs_stochastic= { 'feasible_ev_charging_power': {'1562148133.0': 0.0}, 'p_ess': {'1562148133.0': 28.0}, 'p_grid': {'1562148133.0': -28.0}, 'p_pv': {'1562148133.0': 0.0}, 'p_vac': {'1562148133.0': 0.0}}
             outputs_stochastic = {
 "feasible_ev_charging_power": {
 "1560262735.0": 0
@@ -203,19 +202,19 @@ if __name__ == '__main__':
 "p_ess": {
 "1560262735.0": 28
 },
-"p_ev/chargers/charger1": {
+"chargers/charger1/ev1/p_ev": {
 "1560262735.0": 0
 },
-"p_ev/chargers/charger2": {
+"chargers/charger2/ev2/p_ev": {
 "1560262735.0": 3
 },
-"p_ev/chargers/charger3": {
+"chargers/charger3/ev3/p_ev": {
 "1560262735.0": 4
 },
-"p_ev/chargers/charger4": {
+"chargers/charger4/ev4/p_ev": {
 "1560262735.0": 4
 },
-"p_ev/chargers/charger5": {
+"chargers/charger5/ev5/p_ev": {
 "1560262735.0": 5
 },
 "p_grid": {
@@ -230,19 +229,11 @@ if __name__ == '__main__':
 }"""
 
             logger.debug("outputs_stochastic "+str(outputs_stochastic))
-            outputs={}
-            for key, value in outputs_stochastic.items():
-                if "p_ev" in key:
-                    new_key = key.split("/")
-                    new_key = new_key[-3]
-                else:
-                    new_key = key
-                for timestamp, value2 in value.items():
-                    outputs[new_key]=value2
-
+            outputs=utils.create_output_message(outputs_stochastic)
             logger.debug("outputs "+str(outputs))
 
-
+            for i in range(1,6):
+                logger.debug("Charger"+str(i)+" "+str(Chargers["charger"+str(i)].EV_connected))
             utils.set_SoC_with_Pev(outputs,Chargers, EVs, number_km)
 
             # calculate Pbat for next timestep
