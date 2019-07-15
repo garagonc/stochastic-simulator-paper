@@ -35,13 +35,14 @@ class EV:
         if P_ev == -1:
             # logger.debug("car " + str(car) + " power " + str(power))
             value = (self.Soc - (consumption_for_x_km / self.Battery_Capacity))
-            # logger.debug("value "+str(value))
+            logger.debug("value "+str(value))
             if value < 0:
                 return 0
             else:
                 return value
         else:
             value = (self.Soc + (P_ev / self.Battery_Capacity))
+            logger.debug("value " + str(value))
             if value > 1:
                 return 1
             else:

@@ -137,7 +137,7 @@ if __name__ == '__main__':
             local_ESS_SoC = local_ESS.get_SoC()
             logger.debug("Local_ESS_Soc " + str(local_ESS_SoC))
             # changing input_file for PROFEV
-            input_file["ESS"]["SoC_Value"] = local_ESS_SoC * 100
+            input_file["ESS"]["SoC_Value"] = local_ESS_SoC #* 100
 
 
             PV_forecast={}
@@ -181,7 +181,7 @@ if __name__ == '__main__':
             logger.debug("status " + str(status))
 
             logger.debug("waiting time " + str(time_sim) + " for scenario " + str(scenario))
-            time_to_sleep= 14*60
+            time_to_sleep= 9*60
             time.sleep(time_to_sleep)
             while not ofw.get_status(id) == "stopped":
                 logger.debug("waiting time " + str(time_sim) + " for scenario " + str(scenario))
@@ -190,7 +190,7 @@ if __name__ == '__main__':
             outputs_stochastic = ofw.get_outputs(id)
             logger.debug("Outputs "+str(outputs_stochastic))
 
-
+            
 
 
 
@@ -250,13 +250,13 @@ if __name__ == '__main__':
 
 
 
-            #sys.exit(0)
 
 
 
 
-            #if time_sim == 7:
-                #sys.exit(0)
+
+            if time_sim == 10:
+                sys.exit(0)
 
 
 

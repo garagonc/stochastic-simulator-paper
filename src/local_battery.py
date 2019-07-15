@@ -31,7 +31,7 @@ class ESS:
 
     def calculate_S0C_next_timestep(self, P_bat, timestep_in_sec):
 
-        value = (self.get_SoC() + ((P_bat * timestep_in_sec)/ (self.Battery_Capacity * 3600)))
+        value = (self.get_SoC() - ((P_bat * timestep_in_sec)/ (self.Battery_Capacity * 3600)))
 
         if value < 0:
             value = 0
